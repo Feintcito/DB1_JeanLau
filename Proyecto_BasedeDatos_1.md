@@ -1,0 +1,927 @@
+# 🚀 Plan de Trabajo COMPLETO - 55% (Hoy) + Bases de Datos Específicas
+
+## 🗄️ **BASES DE DATOS CONFIRMADAS:**
+
+- **📊 AdventureWorks (SQL Server:1433)** - Empresa de bicicletas Adventure Works Cycles
+- **🍕 Northwind (MySQL:3306)** - Importador de alimentos Northwind Traders  
+- **🌍 WideWorldImporters (PostgreSQL:5432)** - Mayorista moderno Wide World Importers
+
+## ⏰ **TIMELINE GENERAL:**
+- **Hora 1-2:** Setup individual (cada uno en su VM)
+- **Hora 2-3:** Desarrollo principal (trabajo paralelo)
+- **Hora 3-4:** Integración y pruebas entre sistemas
+- **Hora 4-4.5:** Documentación y evidencias
+- **Hora 4.5-5:** Demo final funcionando
+
+---
+
+## 👤 **JERSON: VM1 - Coordinador + Bases de Datos**
+**Máquina:** `ssh -i ~/.ssh/jerson_key jerson@34.57.77.240`
+**Tiempo total:** 4 horas
+**% Responsabilidad:** 25% del proyecto
+
+### **📋 TAREAS DETALLADAS:**
+
+#### **HORA 1: Setup Infraestructura (60 min)**
+```bash
+# 1. Actualizar sistema (10 min)
+sudo apt update && sudo apt upgrade -y
+
+# 2. Instalar Docker (15 min)
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker jerson
+newgrp docker
+
+# 3. Instalar herramientas adicionales (10 min)
+sudo apt install -y htop curl wget git nano
+
+# 4. Configurar directorio de trabajo (5 min)
+mkdir ~/bases-datos ~/backups ~/scripts ~/data
+cd ~/bases-datos
+
+# 5. Crear docker-compose.yml (20 min)
+nano docker-compose.yml
+```
+
+**Archivo docker-compose.yml:**
+```yaml
+version: '3.8'
+services:
+  # SQL Server - AdventureWorks
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=Proyecto123!
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - ./data:/data
+
+  # MySQL - Northwind
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=Proyecto123!
+      - MYSQL_DATABASE=northwind
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./data:/data
+
+  # PostgreSQL - WideWorldImporters
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    environment:
+      - POSTGRES_PASSWORD=Proyecto123!
+      - POSTGRES_DB=wideworldimporters
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./data:/data
+
+volumes:
+  sqlserver_data:
+  mysql_data:
+  postgres_data:
+```
+
+#### **HORA 2: Desplegar Bases de Datos (60 min)**
+
+**Script de instalación automática:**
+```bash
+#!/bin/bash
+# install_databases.sh
+
+echo "🔄 Descargando bases de datos..."
+
+# Crear directorio de datos
+mkdir -p ./data
+cd ./data
+
+# 1. ADVENTUREWORKS (SQL Server)
+echo "📊 Descargando AdventureWorks..."
+wget -O AdventureWorks2019.bak "https://github.com/Microsoft/sql-server-samples/releases/download/adventureworks/AdventureWorks2019.bak"
+
+# 2. NORTHWIND (MySQL) - Script de creación
+echo "🍕 Creando script Northwind..."
+cat > northwind.sql << 'EOF'
+CREATE DATABASE IF NOT EXISTS northwind;
+USE northwind;
+
+CREATE TABLE customers (
+    customer_id VARCHAR(5) PRIMARY KEY,
+    company_name VARCHAR(40) NOT NULL,
+    contact_name VARCHAR(30),
+    contact_title VARCHAR(30),
+    address VARCHAR(60),
+    city VARCHAR(15),
+    country VARCHAR(15)
+);
+
+CREATE TABLE products (
+    product_id INT AUTO_INCREMENT PRIMARY KEY,
+    product_name VARCHAR(40) NOT NULL,
+    category_id INT,
+    unit_price DECIMAL(10,4),
+    units_in_stock SMALLINT
+);
+
+CREATE TABLE orders (
+    order_id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id VARCHAR(5),
+    employee_id INT,
+    order_date DATE,
+    required_date DATE,
+    shipped_date DATE,
+    freight DECIMAL(10,4)
+);
+
+-- Datos de prueba
+INSERT INTO customers VALUES 
+('ALFKI', 'Alfreds Futterkiste', 'Maria Anders', 'Sales Representative', 'Obere Str. 57', 'Berlin', 'Germany'),
+('ANATR', 'Ana Trujillo Emparedados y helados', 'Ana Trujillo', 'Owner', 'Avda. de la Constitución 2222', 'México D.F.', 'Mexico'),
+('ANTON', 'Antonio Moreno Taquería', 'Antonio Moreno', 'Owner', 'Mataderos 2312', 'México D.F.', 'Mexico');
+
+INSERT INTO products VALUES 
+(1, 'Chai', 1, 18.0000, 39),
+(2, 'Chang', 1, 19.0000, 17),
+(3, 'Aniseed Syrup', 2, 10.0000, 13);
+
+INSERT INTO orders VALUES 
+(10248, 'ALFKI', 5, '1996-07-04', '1996-08-01', '1996-07-16', 32.3800),
+(10249, 'ANATR', 6, '1996-07-05', '1996-08-16', '1996-07-10', 11.6100),
+(10250, 'ANTON', 4, '1996-07-08', '1996-08-05', '1996-07-12', 65.8300);
+EOF
+
+# 3. WIDEWORLDIMPORTERS (PostgreSQL) - Script de creación
+echo "🌍 Creando script WideWorldImporters..."
+cat > wideworldimporters.sql << 'EOF'
+-- Crear esquemas
+CREATE SCHEMA IF NOT EXISTS sales;
+CREATE SCHEMA IF NOT EXISTS purchasing;
+CREATE SCHEMA IF NOT EXISTS warehouse;
+
+-- Tabla de clientes
+CREATE TABLE sales.customers (
+    customer_id SERIAL PRIMARY KEY,
+    customer_name VARCHAR(100) NOT NULL,
+    contact_person VARCHAR(50),
+    phone_number VARCHAR(20),
+    fax_number VARCHAR(20),
+    website_url VARCHAR(256),
+    delivery_address TEXT,
+    city VARCHAR(50),
+    postal_code VARCHAR(10),
+    country VARCHAR(60)
+);
+
+-- Tabla de productos
+CREATE TABLE warehouse.stock_items (
+    stock_item_id SERIAL PRIMARY KEY,
+    stock_item_name VARCHAR(100) NOT NULL,
+    brand VARCHAR(50),
+    size VARCHAR(20),
+    unit_price DECIMAL(18,2),
+    quantity_on_hand INT,
+    color_id INT
+);
+
+-- Tabla de órdenes
+CREATE TABLE sales.orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES sales.customers(customer_id),
+    salesperson_person_id INT,
+    order_date DATE,
+    expected_delivery_date DATE,
+    contact_person_id INT,
+    last_edited_when TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Datos de prueba
+INSERT INTO sales.customers (customer_name, contact_person, phone_number, city, country) VALUES 
+('Tailspin Toys (Head Office)', 'Waldemar Fisar', '(415) 555-0100', 'San Francisco', 'United States'),
+('Contoso, Ltd.', 'Marcus Falk', '(415) 555-0101', 'San Francisco', 'United States'),
+('Fabrikam, Inc.', 'Shane Bond', '(415) 555-0102', 'San Francisco', 'United States');
+
+INSERT INTO warehouse.stock_items (stock_item_name, brand, unit_price, quantity_on_hand) VALUES 
+('USB missile launcher (Green)', 'Code Mercenaries', 49.00, 10),
+('USB food flash drive - sushi roll', 'Generic', 32.00, 23),
+('Stressed Out Balls', 'Bounce-A-Lot', 2.20, 162);
+
+INSERT INTO sales.orders (customer_id, order_date, expected_delivery_date) VALUES 
+(1, '2024-01-15', '2024-01-22'),
+(2, '2024-01-16', '2024-01-23'),
+(3, '2024-01-17', '2024-01-24');
+EOF
+
+cd ..
+
+# Iniciar contenedores
+echo "🚀 Iniciando contenedores..."
+docker-compose up -d
+
+# Esperar que los contenedores estén listos
+echo "⏳ Esperando contenedores (60 segundos)..."
+sleep 60
+
+# Instalar AdventureWorks en SQL Server
+echo "📊 Instalando AdventureWorks..."
+docker exec sqlserver /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'Proyecto123!' -Q "
+CREATE DATABASE AdventureWorks2019;
+USE AdventureWorks2019;
+-- Crear tablas básicas para demo
+CREATE TABLE Sales.Customer (
+    CustomerID INT PRIMARY KEY IDENTITY(1,1),
+    PersonID INT,
+    StoreID INT,
+    TerritoryID INT,
+    AccountNumber VARCHAR(10),
+    rowguid UNIQUEIDENTIFIER DEFAULT NEWID(),
+    ModifiedDate DATETIME DEFAULT GETDATE()
+);
+
+CREATE TABLE Production.Product (
+    ProductID INT PRIMARY KEY IDENTITY(1,1),
+    Name VARCHAR(50) NOT NULL,
+    ProductNumber VARCHAR(25) NOT NULL,
+    Color VARCHAR(15),
+    StandardCost DECIMAL(19,4),
+    ListPrice DECIMAL(19,4),
+    Size VARCHAR(5),
+    Weight DECIMAL(8,2)
+);
+
+CREATE TABLE Sales.SalesOrderHeader (
+    SalesOrderID INT PRIMARY KEY IDENTITY(1,1),
+    RevisionNumber TINYINT DEFAULT 0,
+    OrderDate DATETIME DEFAULT GETDATE(),
+    DueDate DATETIME,
+    ShipDate DATETIME,
+    Status TINYINT DEFAULT 1,
+    CustomerID INT,
+    SubTotal DECIMAL(19,4),
+    TotalDue DECIMAL(19,4)
+);
+
+-- Datos de ejemplo
+INSERT INTO Production.Product (Name, ProductNumber, Color, StandardCost, ListPrice) VALUES 
+('Mountain Bike Socks, M', 'SO-B909-M', 'White', 3.3963, 9.50),
+('Mountain Bike Socks, L', 'SO-B909-L', 'White', 3.3963, 9.50),
+('Road Bike Socks, M', 'SO-R809-M', 'Red', 3.3963, 9.50);
+
+INSERT INTO Sales.Customer (PersonID, TerritoryID, AccountNumber) VALUES 
+(1, 1, 'AW00000001'),
+(2, 1, 'AW00000002'),
+(3, 1, 'AW00000003');
+
+INSERT INTO Sales.SalesOrderHeader (CustomerID, SubTotal, TotalDue) VALUES 
+(1, 100.50, 108.54),
+(2, 200.75, 216.81),
+(3, 150.25, 162.27);
+"
+
+# Instalar Northwind en MySQL
+echo "🍕 Instalando Northwind..."
+docker exec -i mysql mysql -u root -p'Proyecto123!' < data/northwind.sql
+
+# Instalar WideWorldImporters en PostgreSQL
+echo "🌍 Instalando WideWorldImporters..."
+docker exec -i postgres psql -U postgres -d wideworldimporters < data/wideworldimporters.sql
+
+echo "🎉 ¡Todas las bases de datos instaladas correctamente!"
+echo ""
+echo "📊 AdventureWorks (SQL Server): Puerto 1433"
+echo "   - Usuario: sa / Password: Proyecto123!"
+echo "🍕 Northwind (MySQL): Puerto 3306"
+echo "   - Usuario: root / Password: Proyecto123!"
+echo "🌍 WideWorldImporters (PostgreSQL): Puerto 5432"
+echo "   - Usuario: postgres / Password: Proyecto123!"
+```
+
+**Ejecutar instalación:**
+```bash
+# Crear y ejecutar script
+nano install_databases.sh
+chmod +x install_databases.sh
+./install_databases.sh
+```
+
+#### **HORA 3: Verificación y Pruebas (60 min)**
+```bash
+# Verificar SQL Server
+docker exec sqlserver /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'Proyecto123!' -Q "SELECT name FROM sys.databases;"
+
+# Verificar MySQL
+docker exec mysql mysql -u root -p'Proyecto123!' -e "SHOW DATABASES; USE northwind; SHOW TABLES;"
+
+# Verificar PostgreSQL
+docker exec postgres psql -U postgres -d wideworldimporters -c "\dt sales.*"
+
+# Probar conectividad externa
+telnet 34.57.77.240 1433
+telnet 34.57.77.240 3306
+telnet 34.57.77.240 5432
+```
+
+#### **HORA 4: Documentación (60 min)**
+**Crear archivo de credenciales:**
+```bash
+cat > ~/conexiones_bd.txt << 'EOF'
+=== CONEXIONES BASES DE DATOS ===
+
+📊 ADVENTUREWORKS (SQL Server)
+Server: 34.57.77.240,1433
+Database: AdventureWorks2019
+Usuario: sa
+Password: Proyecto123!
+Tablas principales:
+- Sales.Customer
+- Production.Product
+- Sales.SalesOrderHeader
+
+🍕 NORTHWIND (MySQL)
+Server: 34.57.77.240
+Port: 3306
+Database: northwind
+Usuario: root
+Password: Proyecto123!
+Tablas principales:
+- customers
+- products
+- orders
+
+🌍 WIDEWORLDIMPORTERS (PostgreSQL)
+Server: 34.57.77.240
+Port: 5432
+Database: wideworldimporters
+Usuario: postgres
+Password: Proyecto123!
+Tablas principales:
+- sales.customers
+- warehouse.stock_items
+- sales.orders
+
+=== DOCKER CONTAINERS ===
+sqlserver: Puerto 1433
+mysql: Puerto 3306
+postgres: Puerto 5432
+
+Verificar estado: docker ps
+Ver logs: docker logs [container_name]
+Reiniciar: docker restart [container_name]
+EOF
+```
+
+### **📤 ENTREGABLES JERSON:**
+- [ ] 3 bases de datos funcionando (AdventureWorks, Northwind, WideWorldImporters)
+- [ ] Docker Compose configurado y funcionando
+- [ ] Datos de prueba importados en las 3 BDs
+- [ ] Conexiones verificadas desde VM2
+- [ ] Documento completo con credenciales
+- [ ] Mensaje en chat: "✅ TODAS LAS BDs LISTAS - Piero y Alejandro pueden empezar"
+
+---
+
+## 👤 **PIERO (TÚ): VM2 - Clientes Web + Interfaces**
+**Máquina:** `ssh -i ~/.ssh/piero_key piero@34.60.51.165`
+**Tiempo total:** 3.5 horas
+**% Responsabilidad:** 20% del proyecto
+**DEPENDENCIA:** Esperar que Jerson termine las BDs
+
+### **📋 TAREAS DETALLADAS:**
+
+#### **HORA 1: Setup Servidor Web (60 min)**
+```bash
+# 1. Actualizar sistema (10 min)
+sudo apt update && sudo apt upgrade -y
+
+# 2. Instalar LAMP Stack (30 min)
+sudo apt install -y apache2 php libapache2-mod-php
+sudo apt install -y php-mysql php-pgsql php-common php-cli php-mbstring php-zip
+sudo systemctl start apache2
+sudo systemctl enable apache2
+
+# 3. Configurar Apache (10 min)
+sudo a2enmod rewrite
+sudo systemctl reload apache2
+
+# 4. Verificar Apache funcionando (10 min)
+curl http://localhost
+sudo systemctl status apache2
+```
+
+#### **HORA 2: phpMyAdmin para MySQL/Northwind (60 min)**
+```bash
+# 1. Descargar phpMyAdmin (15 min)
+cd /tmp
+wget https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-languages.tar.gz
+tar xzf phpMyAdmin-latest-all-languages.tar.gz
+
+# 2. Configurar phpMyAdmin (30 min)
+sudo mv phpMyAdmin-* /var/www/html/phpmyadmin
+sudo chown -R www-data:www-data /var/www/html/phpmyadmin
+
+# 3. Configurar conexión a VM1 (15 min)
+sudo nano /var/www/html/phpmyadmin/config.inc.php
+```
+
+**Archivo config.inc.php:**
+```php
+<?php
+$cfg['blowfish_secret'] = 'proyecto-seguridad-bd-2024';
+
+$i = 0;
+$i++;
+$cfg['Servers'][$i]['auth_type'] = 'cookie';
+$cfg['Servers'][$i]['host'] = '34.57.77.240';
+$cfg['Servers'][$i]['port'] = '3306';
+$cfg['Servers'][$i]['connect_type'] = 'tcp';
+$cfg['Servers'][$i]['compress'] = false;
+$cfg['Servers'][$i]['AllowNoPassword'] = false;
+
+$cfg['UploadDir'] = '';
+$cfg['SaveDir'] = '';
+?>
+```
+
+#### **HORA 3: pgAdmin para PostgreSQL/WideWorldImporters (60 min)**
+```bash
+# 1. Instalar pgAdmin4 (30 min)
+sudo apt install -y pgadmin4-web
+
+# 2. Configurar pgAdmin (20 min)
+sudo /usr/pgadmin4/bin/setup-web.sh
+# Email: admin@proyecto.com
+# Password: Proyecto123!
+
+# 3. Configurar conexión a PostgreSQL VM1 (10 min)
+# Acceder vía web: http://34.60.51.165/pgadmin4
+# Crear servidor: 34.57.77.240:5432
+```
+
+#### **HORA 3.5: Azure Data Studio para SQL Server/AdventureWorks (30 min)**
+```bash
+# 1. Instalar Azure Data Studio (20 min)
+cd /tmp
+wget -O azuredatastudio.deb "https://go.microsoft.com/fwlink/?linkid=2215251"
+sudo dpkg -i azuredatastudio.deb
+sudo apt-get install -f
+
+# 2. Configurar conexión (10 min)
+# Server: 34.57.77.240,1433
+# Authentication: SQL Login
+# Username: sa
+# Password: Proyecto123!
+```
+
+### **📤 ENTREGABLES PIERO:**
+- [ ] Apache funcionando en puerto 80
+- [ ] phpMyAdmin conectado a MySQL/Northwind (http://IP/phpmyadmin)
+- [ ] pgAdmin conectado a PostgreSQL/WideWorldImporters (http://IP/pgadmin4)
+- [ ] Azure Data Studio conectado a SQL Server/AdventureWorks
+- [ ] Screenshots de las 3 interfaces funcionando
+- [ ] Mensaje en chat: "✅ APACHE + CLIENTES LISTOS - Jose puede empezar WAF"
+
+---
+
+## 👤 **EMERSON: VM2 - SIEM + Monitoreo (Turno coordinado)**
+**Máquina:** `ssh -i ~/.ssh/emerson_key emerson@34.60.51.165`
+**Tiempo total:** 3 horas (paralelo con Piero)
+**% Responsabilidad:** 20% del proyecto
+
+### **📋 TAREAS DETALLADAS:**
+
+#### **HORA 1: Instalar Wazuh SIEM (60 min)**
+```bash
+# 1. Preparar sistema (10 min)
+sudo apt update
+sudo sysctl -w vm.max_map_count=262144
+
+# 2. Instalar Wazuh All-in-One (45 min)
+curl -sO https://packages.wazuh.com/4.7/wazuh-install.sh
+sudo bash ./wazuh-install.sh -a
+
+# 3. Verificar instalación (5 min)
+sudo systemctl status wazuh-manager
+sudo systemctl status wazuh-indexer
+sudo systemctl status wazuh-dashboard
+```
+
+#### **HORA 2: Configurar Reglas para las 3 BDs (60 min)**
+```bash
+# Crear reglas específicas para cada BD
+sudo nano /var/ossec/etc/rules/database_rules.xml
+```
+
+**Archivo database_rules.xml:**
+```xml
+<group name="database,attack,">
+
+  <!-- SQL Server / AdventureWorks -->
+  <rule id="100001" level="10">
+    <if_matched_sid>100000</if_matched_sid>
+    <frequency>15</frequency>
+    <timeframe>60</timeframe>
+    <description>SQL Server: Conexiones masivas detectadas (AdventureWorks)</description>
+    <group>sqlserver,attack,</group>
+  </rule>
+
+  <rule id="100000" level="3">
+    <match>sqlserver|mssql|1433</match>
+    <description>SQL Server: Conexión detectada</description>
+    <group>sqlserver,connection,</group>
+  </rule>
+
+  <!-- MySQL / Northwind -->
+  <rule id="100011" level="10">
+    <if_matched_sid>100010</if_matched_sid>
+    <frequency>15</frequency>
+    <timeframe>60</timeframe>
+    <description>MySQL: Conexiones masivas detectadas (Northwind)</description>
+    <group>mysql,attack,</group>
+  </rule>
+
+  <rule id="100010" level="3">
+    <match>mysql|3306</match>
+    <description>MySQL: Conexión detectada</description>
+    <group>mysql,connection,</group>
+  </rule>
+
+  <!-- PostgreSQL / WideWorldImporters -->
+  <rule id="100021" level="10">
+    <if_matched_sid>100020</if_matched_sid>
+    <frequency>15</frequency>
+    <timeframe>60</timeframe>
+    <description>PostgreSQL: Conexiones masivas detectadas (WideWorldImporters)</description>
+    <group>postgresql,attack,</group>
+  </rule>
+
+  <rule id="100020" level="3">
+    <match>postgres|postgresql|5432</match>
+    <description>PostgreSQL: Conexión detectada</description>
+    <group>postgresql,connection,</group>
+  </rule>
+
+  <!-- SQL Injection Detection -->
+  <rule id="100030" level="12">
+    <match>union select|drop table|insert into|delete from|exec|script</match>
+    <description>ALERTA CRÍTICA: Posible intento de SQL Injection detectado</description>
+    <group>sql_injection,attack,</group>
+  </rule>
+
+</group>
+```
+
+#### **HORA 3: Instalar agente en VM1 y monitorear (60 min)**
+```bash
+# Instalar agente Wazuh en VM1 (coordinación con Jerson)
+# SSH a VM1
+ssh -i ~/.ssh/emerson_key emerson@34.57.77.240
+
+# En VM1:
+curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | sudo apt-key add -
+echo "deb https://packages.wazuh.com/4.x/apt/ stable main" | sudo tee /etc/apt/sources.list.d/wazuh.list
+sudo apt update
+sudo apt install -y wazuh-agent
+
+# Configurar agente
+sudo sed -i 's/<server>MANAGER_IP<\/server>/<server>34.60.51.165<\/server>/' /var/ossec/etc/ossec.conf
+sudo systemctl enable wazuh-agent
+sudo systemctl start wazuh-agent
+
+exit
+
+# Verificar en VM2
+sudo /var/ossec/bin/agent_control -l
+```
+
+### **📤 ENTREGABLES EMERSON:**
+- [ ] Wazuh SIEM funcionando (https://IP)
+- [ ] Reglas configuradas para las 3 bases de datos
+- [ ] Agente funcionando en VM1
+- [ ] Dashboard mostrando monitoreo de BDs
+- [ ] Prueba de detección de conexiones masivas
+- [ ] Screenshots de alertas funcionando
+
+---
+
+## 👤 **JOSE: VM2 - WAF + Terraform (Último turno)**
+**Máquina:** `ssh -i ~/.ssh/jose_key jose@34.60.51.165`
+**Tiempo total:** 2.5 horas (después de Piero)
+**% Responsabilidad:** 15% del proyecto
+**DEPENDENCIA:** Esperar que Piero tenga Apache funcionando
+
+### **📋 TAREAS DETALLADAS:**
+
+#### **HORA 1.5: Configurar WAF ModSecurity (90 min)**
+```bash
+# 1. Instalar ModSecurity (30 min)
+sudo apt install -y libapache2-mod-security2
+sudo a2enmod security2
+sudo a2enmod headers
+sudo systemctl reload apache2
+
+# 2. Configurar reglas OWASP (45 min)
+sudo nano /etc/modsecurity/modsecurity.conf
+```
+
+**Configuración ModSecurity:**
+```apache
+# Habilitar ModSecurity
+SecRuleEngine On
+SecAuditEngine On
+SecAuditLog /var/log/apache2/modsec_audit.log
+
+# Reglas específicas para bases de datos
+SecRule REQUEST_URI "@contains /phpmyadmin" \
+    "id:1001,phase:1,block,msg:'Protegiendo phpMyAdmin'"
+
+SecRule REQUEST_URI "@contains /pgadmin4" \
+    "id:1002,phase:1,block,msg:'Protegiendo pgAdmin'"
+
+# Anti SQL Injection para las 3 BDs
+SecRule ARGS "@detectSQLi" \
+    "id:1003,phase:2,block,msg:'SQL Injection detectado en AdventureWorks/Northwind/WideWorldImporters'"
+
+SecRule ARGS "@contains union select" \
+    "id:1004,phase:2,block,msg:'UNION SELECT attack detectado'"
+
+SecRule ARGS "@contains drop table" \
+    "id:1005,phase:2,block,msg:'DROP TABLE attack detectado'"
+```
+
+#### **HORA 1: Terraform para infraestructura (60 min)**
+```bash
+# 1. Instalar Terraform (20 min)
+wget https://releases.hashicorp.com/terraform/1.6.0/terraform_1.6.0_linux_amd64.zip
+unzip terraform_1.6.0_linux_amd64.zip
+sudo mv terraform /usr/local/bin/
+
+# 2. Crear scripts de infraestructura (40 min)
+mkdir ~/terraform-proyecto
+cd ~/terraform-proyecto
+nano main.tf
+```
+
+**Script Terraform main.tf:**
+```hcl
+# main.tf - Terraform para el proyecto
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 4.0"
+    }
+  }
+}
+
+# Variables
+variable "project_id" {
+  description = "GCP Project ID"
+  type        = string
+  default     = "proyecto-base-de-datos-1"
+}
+
+# Firewall rules para bases de datos
+resource "google_compute_firewall" "database_ports" {
+  name    = "allow-database-ports"
+  network = "default"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["1433", "3306", "5432", "80", "443", "22"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["database-server", "tools-server"]
+}
+
+# VM para bases de datos
+resource "google_compute_instance" "database_vm" {
+  name         = "vm1-databases"
+  machine_type = "e2-standard-4"
+  zone         = "us-central1-a"
+
+  boot_disk {
+    initialize_params {
+      image = "debian-cloud/debian-11"
+      size  = 150
+    }
+  }
+
+  metadata = {
+    enable-oslogin = "FALSE"
+  }
+
+  network_interface {
+    network = "default"
+    access_config {}
+  }
+
+  tags = ["database-server"]
+}
+
+# VM para herramientas
+resource "google_compute_instance" "tools_vm" {
+  name         = "tools-server"
+  machine_type = "e2-standard-4"
+  zone         = "us-central1-a"
+
+  boot_disk {
+    initialize_params {
+      image = "debian-cloud/debian-11"
+      size  = 100
+    }
+  }
+
+  metadata = {
+    enable-oslogin = "FALSE"
+  }
+
+  network_interface {
+    network = "default"
+    access_config {}
+  }
+
+  tags = ["tools-server"]
+}
+
+# Outputs
+output "database_vm_ip" {
+  value = google_compute_instance.database_vm.network_interface[0].access_config[0].nat_ip
+}
+
+output "tools_vm_ip" {
+  value = google_compute_instance.tools_vm.network_interface[0].access_config[0].nat_ip
+}
+```
+
+### **📤 ENTREGABLES JOSE:**
+- [ ] WAF ModSecurity funcionando
+- [ ] Reglas anti SQL-injection configuradas para las 3 BDs
+- [ ] Terraform scripts para replicar infraestructura
+- [ ] Logs de ModSecurity funcionando
+- [ ] Pruebas de bloqueo de ataques
+
+---
+
+## 👤 **ALEJANDRO: PC Local - Power BI + Documentación**
+**Máquina:** PC Local + acceso remoto a VMs
+**Tiempo total:** 4 horas (trabajo paralelo)
+**% Responsabilidad:** 20% del proyecto
+**DEPENDENCIA:** Esperar credenciales de Jerson para conectar
+
+### **📋 TAREAS DETALLADAS:**
+
+#### **HORA 1: Setup Power BI (60 min)**
+```
+# 1. Instalar Power BI Desktop (20 min)
+# Descargar desde: https://powerbi.microsoft.com/desktop/
+
+# 2. Configurar conexiones a las 3 BDs (40 min)
+
+CONEXIÓN SQL SERVER (AdventureWorks):
+- Obtener datos → SQL Server
+- Servidor: 34.57.77.240
+- Base de datos: AdventureWorks2019
+- Modo: DirectQuery
+- Usuario: sa / Password: Proyecto123!
+
+CONEXIÓN MYSQL (Northwind):
+- Obtener datos → MySQL database
+- Servidor: 34.57.77.240
+- Base de datos: northwind
+- Usuario: root / Password: Proyecto123!
+
+CONEXIÓN POSTGRESQL (WideWorldImporters):
+- Obtener datos → PostgreSQL database
+- Servidor: 34.57.77.240
+- Base de datos: wideworldimporters
+- Usuario: postgres / Password: Proyecto123!
+```
+
+#### **HORA 2: Crear Dashboards (60 min)**
+```
+# Dashboard 1: AdventureWorks (20 min)
+- Tabla: Sales.Customer, Production.Product
+- Gráficos: Ventas por producto, clientes por territorio
+
+# Dashboard 2: Northwind (20 min)
+- Tabla: customers, orders, products
+- Gráficos: Órdenes por país, productos más vendidos
+
+# Dashboard 3: WideWorldImporters (20 min)
+- Tabla: sales.customers, sales.orders
+- Gráficos: Ventas por cliente, tendencias temporales
+```
+
+#### **HORA 3: Documentación Técnica (60 min)**
+**Crear documento completo del proyecto:**
+```
+=== DOCUMENTACIÓN PROYECTO SEGURIDAD BD ===
+
+1. ARQUITECTURA IMPLEMENTADA
+- VM1 (34.57.77.240): 3 Bases de Datos
+- VM2 (34.60.51.165): Clientes Web + SIEM + WAF
+
+2. BASES DE DATOS DESPLEGADAS
+- AdventureWorks (SQL Server) - Empresa bicicletas
+- Northwind (MySQL) - Importador alimentos
+- WideWorldImporters (PostgreSQL) - Mayorista moderno
+
+3. COMPONENTES DE SEGURIDAD
+- Wazuh SIEM: Monitoreo conexiones masivas
+- ModSecurity WAF: Protección SQL injection
+- Firewall GCP: Control acceso puertos
+
+4. INTERFACES DE GESTIÓN
+- phpMyAdmin: MySQL/Northwind
+- pgAdmin: PostgreSQL/WideWorldImporters
+- Azure Data Studio: SQL Server/AdventureWorks
+
+5. BUSINESS INTELLIGENCE
+- Power BI: Conectado a las 3 bases de datos
+- Dashboards: Ventas, productos, clientes
+
+6. AUTOMATIZACIÓN
+- Docker Compose: Despliegue BDs
+- Terraform: Infraestructura como código
+```
+
+#### **HORA 4: Verificaciones Finales (60 min)**
+```
+# 1. Probar conexiones SSH a ambas VMs (20 min)
+# 2. Verificar todos los servicios funcionando (20 min)
+# 3. Preparar presentación demo (20 min)
+```
+
+### **📤 ENTREGABLES ALEJANDRO:**
+- [ ] Power BI conectado a las 3 bases de datos
+- [ ] 3 dashboards funcionales con datos reales
+- [ ] Documento técnico completo (arquitectura, componentes, configuración)
+- [ ] Screenshots de toda la infraestructura funcionando
+- [ ] Presentación preparada para demo final
+- [ ] Verificación de conectividad completa
+
+---
+
+## 🎯 **ENTREGABLES FINALES (55%):**
+
+### **✅ Infraestructura (15%):**
+- [x] 2 VMs funcionando con SSH
+- [ ] 3 bases de datos desplegadas (AdventureWorks, Northwind, WideWorldImporters)
+- [ ] Docker Compose configurado
+- [ ] Conectividad verificada entre VMs
+
+### **✅ Seguridad (15%):**
+- [ ] WAF ModSecurity con reglas anti SQL-injection
+- [ ] SIEM Wazuh detectando conexiones masivas
+- [ ] Firewall GCP configurado
+- [ ] Monitoreo de las 3 bases de datos
+
+### **✅ Clientes y Conectividad (15%):**
+- [ ] phpMyAdmin conectado a MySQL/Northwind
+- [ ] pgAdmin conectado a PostgreSQL/WideWorldImporters
+- [ ] Azure Data Studio conectado a SQL Server/AdventureWorks
+- [ ] Interfaces web funcionando
+
+### **✅ Business Intelligence (5%):**
+- [ ] Power BI conectado a las 3 bases de datos
+- [ ] Dashboards con datos reales
+- [ ] Reportes funcionales
+
+### **✅ Documentación (5%):**
+- [ ] Arquitectura completa documentada
+- [ ] Credenciales y accesos organizados
+- [ ] Screenshots de todos los componentes
+- [ ] Demo preparada y funcionando
+
+---
+
+## 📱 **COORDINACIÓN FINAL:**
+
+### **Checkpoints críticos:**
+```
+✅ 15:30 - Jerson: "✅ 3 BDs LISTAS - AdventureWorks/Northwind/WideWorldImporters"
+✅ 17:00 - Piero: "✅ CLIENTES WEB LISTOS - phpMyAdmin/pgAdmin/Azure Data Studio"
+✅ 17:00 - Emerson: "✅ SIEM FUNCIONANDO - Monitoreando 3 BDs"
+✅ 18:30 - Jose: "✅ WAF CONFIGURADO - Protegiendo interfaces web"
+✅ 18:30 - Alejandro: "✅ POWER BI CONECTADO - 3 dashboards funcionando"
+```
+
+### **Demo final (18:30-19:00):**
+1. **Mostrar 3 bases de datos** funcionando
+2. **Demostrar clientes web** conectados
+3. **Simular ataque** y mostrar detección SIEM
+4. **Mostrar dashboards** Power BI con datos
+5. **Presentar arquitectura** completa
+
+**¡OBJETIVO 55% COMPLETADO!** 🚀
