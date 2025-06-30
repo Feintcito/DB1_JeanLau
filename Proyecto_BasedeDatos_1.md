@@ -485,9 +485,9 @@ sudo apt-get install -f
 ### **📤 ENTREGABLES PIERO:**
 - [ ] Apache funcionando en puerto 80
 - [ ] phpMyAdmin conectado a MySQL/Northwind (http://IP/phpmyadmin)
-- [ ] pgAdmin conectado a PostgreSQL/WideWorldImporters (http://IP/pgadmin4)
-- [ ] Azure Data Studio conectado a SQL Server/AdventureWorks
-- [ ] Screenshots de las 3 interfaces funcionando
+- [ ] Adminer Universal conectado a PostgreSQL/WideWorldImporters (http://IP/adminer.php)
+- [ ] Adminer Universal conectado a SQL Server/AdventureWorks (http://IP/adminer.php)
+- [ ] Screenshots de las 3 conexiones funcionando desde una sola interfaz
 - [ ] Mensaje en chat: "✅ APACHE + CLIENTES LISTOS - Jose puede empezar WAF"
 
 ---
@@ -844,8 +844,8 @@ CONEXIÓN POSTGRESQL (WideWorldImporters):
 
 4. INTERFACES DE GESTIÓN
 - phpMyAdmin: MySQL/Northwind
-- pgAdmin: PostgreSQL/WideWorldImporters
-- Azure Data Studio: SQL Server/AdventureWorks
+- Adminer Universal: PostgreSQL/WideWorldImporters + SQL Server/AdventureWorks
+- Una sola herramienta para múltiples motores de BD
 
 5. BUSINESS INTELLIGENCE
 - Power BI: Conectado a las 3 bases de datos
@@ -889,9 +889,9 @@ CONEXIÓN POSTGRESQL (WideWorldImporters):
 
 ### **✅ Clientes y Conectividad (15%):**
 - [ ] phpMyAdmin conectado a MySQL/Northwind
-- [ ] pgAdmin conectado a PostgreSQL/WideWorldImporters
-- [ ] Azure Data Studio conectado a SQL Server/AdventureWorks
-- [ ] Interfaces web funcionando
+- [ ] Adminer Universal conectado a PostgreSQL/WideWorldImporters
+- [ ] Adminer Universal conectado a SQL Server/AdventureWorks
+- [ ] Interfaces web funcionando con una herramienta unificada
 
 ### **✅ Business Intelligence (5%):**
 - [ ] Power BI conectado a las 3 bases de datos
@@ -911,7 +911,7 @@ CONEXIÓN POSTGRESQL (WideWorldImporters):
 ### **Checkpoints críticos:**
 ```
 ✅ 15:30 - Jerson: "✅ 3 BDs LISTAS - AdventureWorks/Northwind/WideWorldImporters"
-✅ 17:00 - Piero: "✅ CLIENTES WEB LISTOS - phpMyAdmin/pgAdmin/Azure Data Studio"
+✅ 17:00 - Piero: "✅ CLIENTES WEB LISTOS - phpMyAdmin + Adminer Universal"
 ✅ 17:00 - Emerson: "✅ SIEM FUNCIONANDO - Monitoreando 3 BDs"
 ✅ 18:30 - Jose: "✅ WAF CONFIGURADO - Protegiendo interfaces web"
 ✅ 18:30 - Alejandro: "✅ POWER BI CONECTADO - 3 dashboards funcionando"
